@@ -2,15 +2,39 @@
 	import { Button, Card, Checkbox, Icon, Select, TextField } from 'm3-svelte';
 	import iconDownload from '@ktibow/iconset-material-symbols/download';
 	import iconBack from '@ktibow/iconset-material-symbols/arrow-back';
+	import { containerTransform } from 'm3-svelte';
 	import iconCopy from '@ktibow/iconset-material-symbols/content-copy';
 	import { fromSearchParams, toSearchParams } from '$lib/download.svelte';
 	import { isBinaryType, resolvePreviousVersion } from '$lib/rdd';
+	import { fade } from 'svelte/transition';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { getPlayedIntro, setPlayed } from '$lib/shared.svelte';
+
+	function getRandomElement<T>(arr: T[]): T | undefined {
+		if (arr.length === 0) return undefined;
+		const randomIndex = Math.floor(Math.random() * arr.length);
+		return arr[randomIndex];
+	}
+
+	let scale = $state(1);
 
 	const init = fromSearchParams(page.url.searchParams);
 
-	let scale = $state(1)
+	const funtexts = [
+		'hahahaha',
+		'hi',
+		'👀',
+		'hooray',
+		'long ears',
+		"i'd say this is rdd m3"
+	];
+	const funtext = getRandomElement(funtexts);
+
+	let introPhase = $state<'seed' | 'expanded' | 'gone'>('seed');
+	const [send, receive] = containerTransform({ duration: 600 });
+
 	let binaryType = $state(init.binaryType);
 	let channel = $state(init.channel);
 	let versionHash = $state(init.version);
@@ -46,7 +70,37 @@
 		const url = new URL(`/download?${params(versionHash)}`, location.origin);
 		await navigator.clipboard.writeText(url.toString());
 	}
+
+	onMount(() => {
+		if (getPlayedIntro()) return; // already played, do nothing
+		setPlayed();
+
+		const grow = setTimeout(() => (introPhase = 'expanded'), 50);
+		const shrink = setTimeout(() => (introPhase = 'seed'), 1400);
+		const remove = setTimeout(() => (introPhase = 'gone'), 1400 + 600);
+
+		return () => {
+			clearTimeout(grow);
+			clearTimeout(shrink);
+			clearTimeout(remove);
+		};
+	});
 </script>
+
+{#if introPhase !== 'gone'}
+	<div class="pointer-events-none fixed inset-0 z-50 h-full w-full">
+		{#if introPhase === 'expanded'}
+			<div
+				class="pointer-events-auto flex h-full w-full items-center justify-center"
+				style="background: var(--m3-scheme-surface, #1c1b1f); color: var(--m3-scheme-on-surface, #fff);"
+				in:receive={{ key: 'container' }}
+				out:fade={{ duration: 200 }}
+			>
+				<p class="text-2xl">{funtext}</p>
+			</div>
+		{/if}
+	</div>
+{/if}
 
 <div class="flex h-dvh items-center justify-center overflow-hidden p-4">
 	<div
